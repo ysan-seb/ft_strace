@@ -5,6 +5,7 @@ SRC_PATH = ./src/
 SRCS =	$(SRC_PATH)main.c \
 		$(SRC_PATH)parse_options.c \
 		$(SRC_PATH)ft_strace.c \
+		$(SRC_PATH)get_command_path.c \
 
 OBJS = $(SRCS:.c=.o)
 
