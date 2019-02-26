@@ -1,79 +1,148 @@
 #include "ft_strace.h"
 #include "systable.h"
+
+#include <syscall.h>
 #include <signal.h>
 
-int		get_env_size(char **env)
+int     param_type_str(pid_t child, long param)
 {
-	int		i = 0;
+	int 	i;
+	char 	c;
 
-	while (env[i])
+	i = 0;
+    buffer_add_char('"');
+	while ((c = (char)ptrace(PTRACE_PEEKTEXT, child, param, 0))) {
+		if (c == 9) {
+			buffer_add_string("\\t");
+			i++;
+		} else if (c == 10) {
+            buffer_add_string("\\n");
+			i++;
+		} else
+            buffer_add_char(c);
 		i++;
-	return (i);
+		if (i == 37)
+			break;
+		param++;
+	}
+	buffer_add_char('"');
+	if (i == 37)
+		buffer_add_string("...");
+    return (0);
 }
 
-static int	print_param(pid_t child, struct user_regs_struct regs, char **av, char **env)
+int     param_type_ptr(char tmp[64], long param[6], int i)
 {
-	int	i;
-	char	c;
-	int	nargs;
-	long	param[6] = {regs.rdi, regs.rsi, regs.rdx, regs.rcx, regs.r8, regs.r9};
+    if (!param[i])
+    	buffer_add_string("NULL");
+	else
+    	sprintf(tmp, "%p", (void*)param[i]);
+	return (0);
+}
+
+int     mmap_def_prot(long param)
+{
+    param == 0 ? buffer_add_string("PROT_NONE") : 0;
+    param == 1 ? buffer_add_string("PROT_READ") : 0;
+    param == 2 ? buffer_add_string("PROT_WRITE") : 0;
+    param == 3 ? buffer_add_string("PROT_READ|PROT_WRITE") : 0;
+    param == 4 ? buffer_add_string("PROT_EXEC") : 0;
+    param == 5 ? buffer_add_string("PROT_READ|PROT_EXEC") : 0;
+    param == 6 ? buffer_add_string("PROT_WRITE|PROT_EXEC") : 0;
+    param == 7 ? buffer_add_string("PROT_READ|PROT_WRITE|PROT_EXEC") : 0;
+    return (0);
+}
+
+int		mmap_def_map(long param)
+{
+	param & 0x01 ? buffer_add_string("MAP_SHARED") : 0;
+	param & 0x02 ? buffer_add_string("MAP_PRIVATE") : 0;
+
+	param & 0x10 ? buffer_add_string("|MAP_FIXED") : 0;
+	param & 0x20 ? buffer_add_string("|MAP_ANONYMOUS") : 0;
+
+	param & 0x0800 ? buffer_add_string("|MAP_DENYWRITE") : 0;
+	return (0);
+}
+
+int		param_type_int(struct user_regs_struct regs, char tmp[64], long param[6], int i)
+{
+	if (regs.orig_rax == SYS_access && i == 1) {
+		access_def(param[i]);
+	} else if (regs.orig_rax == SYS_mprotect && i == 2) {
+		mprotect_def(param[i]);
+	} else if (regs.orig_rax == SYS_mmap && i == 2) {
+		mmap_def_prot(param[i]);
+	} else if (regs.orig_rax == SYS_mmap && i == 3) {
+		mmap_def_map(param[i]);
+	} else
+			sprintf(tmp, "%d", (int)param[i]);
+	return (0);
+}
+
+int     param_type(pid_t child, struct user_regs_struct regs, char tmp[64], char **av, int i)
+{
+	extern char **environ;
+	long	param[6] = {regs.rdi, regs.rsi, regs.rdx, regs.r10, regs.r8, regs.r9};
+
+    if ((void*)param[i] == av) {
+		sprintf(tmp, "[\"%s\"]", av[0]);
+	} else if ((void*)param[i] == environ) {
+		sprintf(tmp, "[/* %d vars */]", get_env_size(environ));
+	} else if (sys[regs.orig_rax].typearg[i] == STR) {
+        param_type_str(child, param[i]);
+	} else if (sys[regs.orig_rax].typearg[i] == PTR) {
+		param_type_ptr(tmp, param, i);
+	} else if (sys[regs.orig_rax].typearg[i] == HEX) {
+		!param[i] ? buffer_add_char('0') : sprintf(tmp, "0x%lx", param[i]);
+	} else if (sys[regs.orig_rax].typearg[i] == INT) {
+		param_type_int(regs, tmp, param, i);
+	} else
+		sprintf(tmp, "%ld", param[i]);
+	buffer_add_string(tmp);
+    return (0);
+}
+
+static int	syscall_param(pid_t child, struct user_regs_struct regs, char **av)
+{
+	int		i;
+	int		nargs;
+	char	tmp[256];
 
 	i = 0;
 	nargs = sys[regs.orig_rax].nargs;
+	sprintf(tmp, "%s(", sys[regs.orig_rax].name);
+	buffer_add_string(tmp);
+	memset(&tmp, 0, 64);
 	while (nargs > 0) {
-		if ((void*)param[i] == av) {
-			printf(" [\"%s\"]", av[0]);
-		} else if ((void*)param[i] == env) {
-			printf("[/* %d vars */]", get_env_size(env));
-		} else if (sys[regs.orig_rax].typearg[i] == STR) {
-			printf("\"");
-			while ((c = (char)ptrace(PTRACE_PEEKTEXT, child, param[i], 0))) {
-				printf("%c", c);
-				param[i]++;
-			}
-			printf("\"");
-		} else if (sys[regs.orig_rax].typearg[i] == PTR) {
-			if (!param[i])
-				printf("NULL");
-			else
-				printf("%p", (void*)param[i]);
-		} else if (sys[regs.orig_rax].typearg[i] == HEX)
-			!param[i] ? printf("0") : printf("0x%lx", param[i]);
-		else
-			printf("%ld", param[i]);
+		param_type(child, regs, tmp, av, i);
+		memset(&tmp, 0, 256);
 		nargs--;
 		if (nargs > 0)
-			printf(", ");
+			buffer_add_string(", ");
 		i++;
 	}
+	buffer_add_string(") ");
 	return (0);
 }
 
-static int	print_return(struct user_regs_struct regs)
+static int	syscall_return(struct user_regs_struct regs)
 {
 	if (sys[regs.orig_rax].ret == VOID)
-		printf(") = ?\n");
+		printf("%s%*c ?\n", buffer.buff, padding(), '=');
 	else if (sys[regs.orig_rax].ret == PTR)
-		printf(") = %p\n", (void*)regs.rax);
+		printf("%s%*c %p\n", buffer.buff, padding(), '=', (void*)regs.rax);
 	else if (sys[regs.orig_rax].ret == INT)
-		printf(") = %d\n", (int)regs.rax);
+		printf("%s%*c %d\n", buffer.buff, padding(), '=', (int)regs.rax);
 	else
-		printf(") = %lld\n", regs.rax);
-	return (0);
-}
-
-static int	wait_syscall(pid_t child, int status)
-{
-	ptrace(PTRACE_SYSCALL, child, 0, 0);
-	waitpid(child, &status, 0);
-	if (WIFEXITED(status))
-		return (1);
+		printf("%s%*c %lld\n",  buffer.buff, padding(), '=', regs.rax);
+	buffer_flush();
 	return (0);
 }
 
 static int	ft_strace_without_opt(char **av, char **env)
 {
-	int					status;
+	int						status;
 	pid_t					child;
 	struct user_regs_struct	regs;
 
@@ -84,19 +153,25 @@ static int	ft_strace_without_opt(char **av, char **env)
 	else {
 		ptrace(PTRACE_SEIZE, child, 0, 0);
 		ptrace(PTRACE_INTERRUPT, child, 0, 0);
+		ptrace(PTRACE_SETOPTIONS, child, 0, PTRACE_O_TRACESYSGOOD);
 		wait(&status);
 		while(1) {
-			if (wait_syscall(child, status))
+
+			ptrace(PTRACE_SYSCALL, child, 0, 0);
+			waitpid(child, &status, 0);
+			ptrace(PTRACE_GETREGS, child, 0, &regs);
+			syscall_param(child, regs, av);
+			
+
+			ptrace(PTRACE_SYSCALL, child, 0, 0);
+			waitpid(child, &status, 0);	
+			ptrace(PTRACE_GETREGS, child, 0, &regs);
+			syscall_return(regs);
+			if (WIFEXITED(status))
 				break;
-			ptrace(PTRACE_GETREGS, child, 1, &regs);
-			printf("%s(", sys[regs.orig_rax].name);
-			print_param(child, regs, av, env);
-			if (wait_syscall(child, status))
-				break;
-			ptrace(PTRACE_GETREGS, child, 1, &regs);
-			print_return(regs);
+
 		}
-		printf("+++ exited with 0 +++\n");
+		printf("+++ exited with %d +++\n", 0);
 	}
 	return (0);
 }

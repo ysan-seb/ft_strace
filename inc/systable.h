@@ -24,7 +24,7 @@ typedef struct s_sys {
 const t_sys sys[] = {
     [0] = {"read", 3, {INT, STR, SIZE_T, UNDEF, UNDEF, UNDEF}, SSIZE_T },
     [1] = {"write", 3, {INT, STR, SIZE_T, UNDEF, UNDEF, UNDEF}, SSIZE_T },
-    [2] = {"open", 3, {STR, INT, INT, UNDEF, UNDEF, UNDEF}, INT },
+    [2] = {"open", 2, {STR, INT, UNDEF, UNDEF, UNDEF, UNDEF}, INT },
     [3] = {"close", 1, {INT, UNDEF, UNDEF, UNDEF, UNDEF, UNDEF}, INT },
     // [4] = {"stat", 2, {STR, STRUCT, UNDEF, UNDEF, UNDEF, UNDEF} },
     [5] = {"fstat", 2, {INT, STRUCT, UNDEF, UNDEF, UNDEF, UNDEF}, INT },
@@ -295,7 +295,7 @@ const t_sys sys[] = {
     // [270] = {"pselect6", 6, {INT, UNDEF, UNDEF, UNDEF, STRUCT, UNDEF} },
     // [271] = {"ppoll", 5, {STRUCT, UINT, STRUCT, UNDEF, SIZET, UNDEF} },
     // [272] = {"unshare", 1, {ULONG, UNDEF, UNDEF, UNDEF, UNDEF, UNDEF} },
-    // [273] = {"set_robust_list", 2, {STRUCT, SIZET, UNDEF, UNDEF, UNDEF, UNDEF} },
+    [273] = {"set_robust_list", 2, {PTR, SIZE_T, UNDEF, UNDEF, UNDEF, UNDEF}, LONG },
     // [274] = {"get_robust_list", 3, {INT, STRUCT, SIZET, UNDEF, UNDEF, UNDEF} },
     // [275] = {"splice", 6, {INT, UNDEF, INT, UNDEF, SIZET, UINT} },
     // [276] = {"tee", 4, {INT, INT, SIZET, UINT, UNDEF, UNDEF} },

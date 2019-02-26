@@ -13,8 +13,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <linux/limits.h>
-
-// #include <syscall.h>
+#include <syscall.h>
 
 typedef struct 	s_opt
 {
@@ -22,13 +21,32 @@ typedef struct 	s_opt
 	int 	h;
 }				t_opt;
 
-typedef struct s_path
+typedef struct 	s_path
 {
 	char	str[PATH_MAX];
 }				t_path;
 
+typedef struct 	s_buffer
+{
+	int		i;
+	char	buff[256];
+}				t_buffer;
+
+t_buffer		buffer;
+
 char            **parse_options(char **av, t_opt *opt);
 int				ft_strace(char **av, t_opt opt, char **env);
 t_path			get_command_path(char *cmd);
+
+int				get_env_size(char **env);
+
+int				buffer_add_char(char c);
+int				buffer_add_string(char *str);
+void			buffer_flush(void);
+
+int				padding(void);
+
+int     		access_def(long param);
+int     		mprotect_def(long param);
 
 #endif

@@ -6,6 +6,14 @@ SRCS =	$(SRC_PATH)main.c \
 		$(SRC_PATH)parse_options.c \
 		$(SRC_PATH)ft_strace.c \
 		$(SRC_PATH)get_command_path.c \
+		$(SRC_PATH)buffer_add_char.c \
+		$(SRC_PATH)buffer_add_string.c \
+		$(SRC_PATH)buffer_flush.c \
+		$(SRC_PATH)get_env_size.c \
+		$(SRC_PATH)padding.c \
+		$(SRC_PATH)access_def.c \
+		$(SRC_PATH)mprotect_def.c \
+
 
 OBJS = $(SRCS:.c=.o)
 

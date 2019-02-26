@@ -23,6 +23,7 @@ int				main(int ac, char **av, char **env)
 
 	if (ac < 2)
 		return (info());
+	buffer.i = 0;
 	memset(&opt, 0, sizeof(t_opt));
 	if (!(av = parse_options(av, &opt)))
 		return (1);
