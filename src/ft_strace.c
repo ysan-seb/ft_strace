@@ -1,8 +1,8 @@
 #include "ft_strace.h"
 #include "systable.h"
+#include "errno_def.h"
 
-#include <syscall.h>
-#include <signal.h>
+const char *errno_def[];
 
 int     param_type_str(pid_t child, long param)
 {
@@ -65,6 +65,15 @@ int		mmap_def_map(long param)
 	return (0);
 }
 
+int		arch_prctl_def(long param)
+{
+	param == 4098 ? buffer_add_string("ARCH_SET_FS"): 0;
+	param == 4099 ? buffer_add_string("ARCH_GET_FS"): 0;
+	param == 4097 ? buffer_add_string("ARCH_SET_GS") : 0;
+	param == 4100 ? buffer_add_string("ARCH_GET_GS"): 0;
+	return (0);
+}
+
 int		param_type_int(struct user_regs_struct regs, char tmp[64], long param[6], int i)
 {
 	if (regs.orig_rax == SYS_access && i == 1) {
@@ -75,6 +84,10 @@ int		param_type_int(struct user_regs_struct regs, char tmp[64], long param[6], i
 		mmap_def_prot(param[i]);
 	} else if (regs.orig_rax == SYS_mmap && i == 3) {
 		mmap_def_map(param[i]);
+	} else if (regs.orig_rax == SYS_arch_prctl && i == 0) {
+		arch_prctl_def(param[i]);
+	} else if (regs.orig_rax == SYS_open && i == 1) {
+		open_def(param[i]);
 	} else
 			sprintf(tmp, "%d", (int)param[i]);
 	return (0);
@@ -90,7 +103,7 @@ int     param_type(pid_t child, struct user_regs_struct regs, char tmp[64], char
 	} else if ((void*)param[i] == environ) {
 		sprintf(tmp, "[/* %d vars */]", get_env_size(environ));
 	} else if (sys[regs.orig_rax].typearg[i] == STR) {
-        param_type_str(child, param[i]);
+        	param_type_str(child, param[i]);
 	} else if (sys[regs.orig_rax].typearg[i] == PTR) {
 		param_type_ptr(tmp, param, i);
 	} else if (sys[regs.orig_rax].typearg[i] == HEX) {
@@ -128,14 +141,27 @@ static int	syscall_param(pid_t child, struct user_regs_struct regs, char **av)
 
 static int	syscall_return(struct user_regs_struct regs)
 {
+	char	tmp[256];
+	char	err[256];
+	long long ret;
+
+	ret = regs.rax;
+	if (ret < 0)
+		ret = -1;
 	if (sys[regs.orig_rax].ret == VOID)
-		printf("%s%*c ?\n", buffer.buff, padding(), '=');
+		sprintf(tmp, "%*c ?", padding(), '=');
 	else if (sys[regs.orig_rax].ret == PTR)
-		printf("%s%*c %p\n", buffer.buff, padding(), '=', (void*)regs.rax);
+		sprintf(tmp, "%*c %p", padding(), '=', (void*)ret);
 	else if (sys[regs.orig_rax].ret == INT)
-		printf("%s%*c %d\n", buffer.buff, padding(), '=', (int)regs.rax);
+		sprintf(tmp, "%*c %d", padding(), '=', (int)ret);
 	else
-		printf("%s%*c %lld\n",  buffer.buff, padding(), '=', regs.rax);
+		sprintf(tmp, "%*c %lld", padding(), '=', ret);
+	buffer_add_string(tmp);
+	if (ret < 0 && sys[regs.orig_rax].ret != VOID) {
+		sprintf(err, " %s (%s)", errno_def[-regs.rax], strerror(-regs.rax));
+		buffer_add_string(err);
+	}
+	printf("%s\n", buffer.buff);
 	buffer_flush();
 	return (0);
 }
@@ -145,6 +171,8 @@ static int	ft_strace_without_opt(char **av, char **env)
 	int						status;
 	pid_t					child;
 	struct user_regs_struct	regs;
+	int		signal;
+	siginfo_t	sig;
 
 	child = fork();
 	if (child == 0) {
@@ -156,15 +184,20 @@ static int	ft_strace_without_opt(char **av, char **env)
 		ptrace(PTRACE_SETOPTIONS, child, 0, PTRACE_O_TRACESYSGOOD);
 		wait(&status);
 		while(1) {
-
 			ptrace(PTRACE_SYSCALL, child, 0, 0);
-			waitpid(child, &status, 0);
+			waitpid(child, &status, WUNTRACED);
+			if (WIFSTOPPED(status) && (signal = WSTOPSIG(status)) != SIGTRAP) {
+				ptrace(PTRACE_GETSIGINFO, child, &sig, 0);
+				if (signal == SIGCHLD) {
+					printf("\e[3;38;5;9m## FUCKING SIG ##\e[0m\n");
+					ptrace(PTRACE_SYSCALL, child, 0, 0);
+					waitpid(child, &status, 0);
+				}
+			}
 			ptrace(PTRACE_GETREGS, child, 0, &regs);
 			syscall_param(child, regs, av);
-			
-
 			ptrace(PTRACE_SYSCALL, child, 0, 0);
-			waitpid(child, &status, 0);	
+			waitpid(child, &status, WUNTRACED);
 			ptrace(PTRACE_GETREGS, child, 0, &regs);
 			syscall_return(regs);
 			if (WIFEXITED(status))
