@@ -1,8 +1,7 @@
 #include "ft_strace.h"
 #include "systable.h"
 #include "errno_def.h"
-
-const char *errno_def[];
+#include "signal_def.h"
 
 int     param_type_str(pid_t child, long param)
 {
@@ -166,12 +165,24 @@ static int	syscall_return(struct user_regs_struct regs)
 	return (0);
 }
 
+void		signal_sigsegv(int sig)
+{
+	pid_t	pid;
+	pid_t	tid;
+
+	pid = getpid();
+	tid = gettid();
+
+	printf("LOOOOOOOOOOOOOL");
+	tgkill(pid, tid, sig);
+}
+
 static int	ft_strace_without_opt(char **av, char **env)
 {
 	int						status;
 	pid_t					child;
 	struct user_regs_struct	regs;
-	int		signal;
+	int		signal_type;
 	siginfo_t	sig;
 
 	child = fork();
@@ -186,12 +197,18 @@ static int	ft_strace_without_opt(char **av, char **env)
 		while(1) {
 			ptrace(PTRACE_SYSCALL, child, 0, 0);
 			waitpid(child, &status, WUNTRACED);
-			if (WIFSTOPPED(status) && (signal = WSTOPSIG(status)) != SIGTRAP) {
-				ptrace(PTRACE_GETSIGINFO, child, &sig, 0);
-				if (signal == SIGCHLD) {
-					printf("\e[3;38;5;9m## FUCKING SIG ##\e[0m\n");
+			if (WIFSTOPPED(status) && (signal_type = WSTOPSIG(status)) != SIGTRAP) {
+				ptrace(PTRACE_GETSIGINFO, child, 0, &sig);
+				if (signal_type == SIGCHLD) {
+					printf("\e[3;38;5;9m--- %s {si_signo=%s, si_code=%d, si_pid=%d, si_uid=%d, si_status=%d, si_utime=%ld, si_stime=%ld} ---\e[0m\n",
+							sig_def[sig.si_signo], sig_def[sig.si_signo], sig.si_code, sig.si_pid, sig.si_uid, sig.si_status, sig.si_utime, sig.si_stime);
 					ptrace(PTRACE_SYSCALL, child, 0, 0);
 					waitpid(child, &status, 0);
+				} else if (signal_type == SIGSEGV) {
+					printf("--- %s {si_signo=%s, si_code=%d, si_pid=%d, si_uid=%d} ---\n+++ killed by SIGSEGV +++",
+						sig_def[sig.si_signo], sig_def[sig.si_signo], sig.si_code, sig.si_pid, sig.si_uid);
+					//signal(SIGSEGV, signal_sigsegv);
+					tgkill(getpid(), gettid(), signal_type);
 				}
 			}
 			ptrace(PTRACE_GETREGS, child, 0, &regs);

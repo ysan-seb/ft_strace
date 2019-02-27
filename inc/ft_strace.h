@@ -18,6 +18,9 @@
 #include <signal.h>
 #include <ctype.h>
 
+#define gettid() syscall(SYS_gettid)
+#define tgkill(pid, tid, sig) syscall(SYS_tgkill, pid, tid, sig)
+
 typedef struct 	s_opt
 {
 	int 	c;
