@@ -9,16 +9,16 @@ int     param_type_str(pid_t child, long param)
 	char 	c;
 
 	i = 0;
-    buffer_add_char('"');
+	buffer_add_char('"');
 	while ((c = (char)ptrace(PTRACE_PEEKTEXT, child, param, 0))) {
 		if (c == 9) {
 			buffer_add_string("\\t");
 			i++;
 		} else if (c == 10) {
-            buffer_add_string("\\n");
+			buffer_add_string("\\n");
 			i++;
 		} else
-            buffer_add_char(c);
+			buffer_add_char(c);
 		i++;
 		if (i == 37)
 			break;
@@ -27,15 +27,15 @@ int     param_type_str(pid_t child, long param)
 	buffer_add_char('"');
 	if (i == 37)
 		buffer_add_string("...");
-    return (0);
+	return (0);
 }
 
 int     param_type_ptr(char tmp[64], long param[6], int i)
 {
-    if (!param[i])
-    	buffer_add_string("NULL");
+	if (!param[i])
+		buffer_add_string("NULL");
 	else
-    	sprintf(tmp, "%p", (void*)param[i]);
+		sprintf(tmp, "%p", (void*)param[i]);
 	return (0);
 }
 
@@ -54,7 +54,7 @@ int		param_type_int(struct user_regs_struct regs, char tmp[64], long param[6], i
 	} else if (regs.orig_rax == SYS_open && i == 1) {
 		open_def(param[i]);
 	} else
-			sprintf(tmp, "%d", (int)param[i]);
+		sprintf(tmp, "%d", (int)param[i]);
 	return (0);
 }
 
@@ -63,12 +63,12 @@ int     param_type(pid_t child, struct user_regs_struct regs, char tmp[64], char
 	extern char **environ;
 	long	param[6] = {regs.rdi, regs.rsi, regs.rdx, regs.r10, regs.r8, regs.r9};
 
-    if ((void*)param[i] == av) {
+	if ((void*)param[i] == av) {
 		sprintf(tmp, "[\"%s\"]", av[0]);
 	} else if ((void*)param[i] == environ) {
 		sprintf(tmp, "[/* %d vars */]", get_env_size(environ));
 	} else if (sys[regs.orig_rax].typearg[i] == STR) {
-        	param_type_str(child, param[i]);
+		param_type_str(child, param[i]);
 	} else if (sys[regs.orig_rax].typearg[i] == PTR) {
 		param_type_ptr(tmp, param, i);
 	} else if (sys[regs.orig_rax].typearg[i] == HEX) {
@@ -78,7 +78,7 @@ int     param_type(pid_t child, struct user_regs_struct regs, char tmp[64], char
 	} else
 		sprintf(tmp, "%ld", param[i]);
 	buffer_add_string(tmp);
-    return (0);
+	return (0);
 }
 
 int	syscall_param(pid_t child, struct user_regs_struct regs, char **av)
@@ -168,15 +168,21 @@ static int	ft_strace_without_opt(char **av, char **env)
 				if (signal_type == SIGCHLD) {
 					printf("\e[3;38;5;9m--- %s {si_signo=%s, si_code=%d, si_pid=%d, si_uid=%d, si_status=%d, si_utime=%ld, si_stime=%ld} ---\e[0m\n",
 							sig_def[sig.si_signo], sig_def[sig.si_signo], sig.si_code, sig.si_pid, sig.si_uid, sig.si_status, sig.si_utime, sig.si_stime);
-					ptrace(PTRACE_SYSCALL, child, 0, 0);
+					ptrace(PTRACE_SYSCALL, child, 0, SIGCHLD);
 					sigprocmask(SIG_SETMASK, &empty, NULL);
 					waitpid(child, &status, 0);
 					sigprocmask(SIG_BLOCK, &masque, NULL);
 				} else if (signal_type == SIGSEGV) {
 					printf("\e[3;38;5;9m--- %s {si_signo=%s, si_code=%d, si_pid=%d, si_uid=%d} ---\n+++ killed by SIGSEGV +++\e[0m\n",
-						sig_def[sig.si_signo], sig_def[sig.si_signo], sig.si_code, sig.si_pid, sig.si_uid);
-					//signal(SIGSEGV, signal_sigsegv);
+							sig_def[sig.si_signo], sig_def[sig.si_signo], sig.si_code, sig.si_pid, sig.si_uid);
 					tgkill(getpid(), gettid(), signal_type);
+				} else if (signal_type == SIGWINCH) {
+					printf("\e[3;38;5;9m--- %s {si_signo=%s, si_code=%d, si_pid=%d, si_uid=%d} ---\e[0m\n",
+							sig_def[sig.si_signo], sig_def[sig.si_signo], sig.si_code, sig.si_pid, sig.si_uid);
+					ptrace(PTRACE_SYSCALL, child, 0, SIGWINCH);
+					sigprocmask(SIG_SETMASK, &empty, NULL);
+					waitpid(child, &status, 0);
+					sigprocmask(SIG_BLOCK, &masque, NULL);
 				}
 			}
 			ptrace(PTRACE_GETREGS, child, 0, &regs);
@@ -189,7 +195,6 @@ static int	ft_strace_without_opt(char **av, char **env)
 			syscall_return(regs);
 			if (WIFEXITED(status))
 				break;
-
 		}
 		printf("+++ exited with %d +++\n", 0);
 	}
