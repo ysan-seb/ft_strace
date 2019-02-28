@@ -39,40 +39,6 @@ int     param_type_ptr(char tmp[64], long param[6], int i)
 	return (0);
 }
 
-int     mmap_def_prot(long param)
-{
-    param == 0 ? buffer_add_string("PROT_NONE") : 0;
-    param == 1 ? buffer_add_string("PROT_READ") : 0;
-    param == 2 ? buffer_add_string("PROT_WRITE") : 0;
-    param == 3 ? buffer_add_string("PROT_READ|PROT_WRITE") : 0;
-    param == 4 ? buffer_add_string("PROT_EXEC") : 0;
-    param == 5 ? buffer_add_string("PROT_READ|PROT_EXEC") : 0;
-    param == 6 ? buffer_add_string("PROT_WRITE|PROT_EXEC") : 0;
-    param == 7 ? buffer_add_string("PROT_READ|PROT_WRITE|PROT_EXEC") : 0;
-    return (0);
-}
-
-int		mmap_def_map(long param)
-{
-	param & 0x01 ? buffer_add_string("MAP_SHARED") : 0;
-	param & 0x02 ? buffer_add_string("MAP_PRIVATE") : 0;
-
-	param & 0x10 ? buffer_add_string("|MAP_FIXED") : 0;
-	param & 0x20 ? buffer_add_string("|MAP_ANONYMOUS") : 0;
-
-	param & 0x0800 ? buffer_add_string("|MAP_DENYWRITE") : 0;
-	return (0);
-}
-
-int		arch_prctl_def(long param)
-{
-	param == 4098 ? buffer_add_string("ARCH_SET_FS"): 0;
-	param == 4099 ? buffer_add_string("ARCH_GET_FS"): 0;
-	param == 4097 ? buffer_add_string("ARCH_SET_GS") : 0;
-	param == 4100 ? buffer_add_string("ARCH_GET_GS"): 0;
-	return (0);
-}
-
 int		param_type_int(struct user_regs_struct regs, char tmp[64], long param[6], int i)
 {
 	if (regs.orig_rax == SYS_access && i == 1) {
@@ -115,7 +81,7 @@ int     param_type(pid_t child, struct user_regs_struct regs, char tmp[64], char
     return (0);
 }
 
-static int	syscall_param(pid_t child, struct user_regs_struct regs, char **av)
+int	syscall_param(pid_t child, struct user_regs_struct regs, char **av)
 {
 	int		i;
 	int		nargs;
@@ -149,9 +115,9 @@ static int	syscall_return(struct user_regs_struct regs)
 		ret = -1;
 	if (sys[regs.orig_rax].ret == VOID)
 		sprintf(tmp, "%*c ?", padding(), '=');
-	else if (sys[regs.orig_rax].ret == PTR)
-		sprintf(tmp, "%*c %p", padding(), '=', (void*)ret);
-	else if (sys[regs.orig_rax].ret == INT)
+	else if (sys[regs.orig_rax].ret == PTR) {
+		ret < 0 ? sprintf(tmp, "%*c %lld", padding(), '=', ret) : sprintf(tmp, "%*c %p", padding(), '=', (void*)ret);
+	} else if (sys[regs.orig_rax].ret == INT)
 		sprintf(tmp, "%*c %d", padding(), '=', (int)ret);
 	else
 		sprintf(tmp, "%*c %lld", padding(), '=', ret);
@@ -165,17 +131,6 @@ static int	syscall_return(struct user_regs_struct regs)
 	return (0);
 }
 
-void		signal_sigsegv(int sig)
-{
-	pid_t	pid;
-	pid_t	tid;
-
-	pid = getpid();
-	tid = gettid();
-
-	printf("LOOOOOOOOOOOOOL");
-	tgkill(pid, tid, sig);
-}
 
 static int	ft_strace_without_opt(char **av, char **env)
 {
@@ -184,7 +139,16 @@ static int	ft_strace_without_opt(char **av, char **env)
 	struct user_regs_struct	regs;
 	int		signal_type;
 	siginfo_t	sig;
+	sigset_t masque;
+	sigset_t empty;
 
+	sigemptyset(&masque);
+	sigemptyset(&empty);
+	sigaddset(&masque, SIGHUP);
+	sigaddset(&masque, SIGINT);
+	sigaddset(&masque, SIGQUIT);
+	sigaddset(&masque, SIGPIPE);
+	sigaddset(&masque, SIGTERM);
 	child = fork();
 	if (child == 0) {
 		execve(av[0], av, env);
@@ -196,16 +160,20 @@ static int	ft_strace_without_opt(char **av, char **env)
 		wait(&status);
 		while(1) {
 			ptrace(PTRACE_SYSCALL, child, 0, 0);
-			waitpid(child, &status, WUNTRACED);
+			sigprocmask(SIG_SETMASK, &empty, NULL);
+			waitpid(child, &status, 0);
+			sigprocmask(SIG_BLOCK, &masque, NULL);
 			if (WIFSTOPPED(status) && (signal_type = WSTOPSIG(status)) != SIGTRAP) {
 				ptrace(PTRACE_GETSIGINFO, child, 0, &sig);
 				if (signal_type == SIGCHLD) {
 					printf("\e[3;38;5;9m--- %s {si_signo=%s, si_code=%d, si_pid=%d, si_uid=%d, si_status=%d, si_utime=%ld, si_stime=%ld} ---\e[0m\n",
 							sig_def[sig.si_signo], sig_def[sig.si_signo], sig.si_code, sig.si_pid, sig.si_uid, sig.si_status, sig.si_utime, sig.si_stime);
 					ptrace(PTRACE_SYSCALL, child, 0, 0);
+					sigprocmask(SIG_SETMASK, &empty, NULL);
 					waitpid(child, &status, 0);
+					sigprocmask(SIG_BLOCK, &masque, NULL);
 				} else if (signal_type == SIGSEGV) {
-					printf("--- %s {si_signo=%s, si_code=%d, si_pid=%d, si_uid=%d} ---\n+++ killed by SIGSEGV +++",
+					printf("\e[3;38;5;9m--- %s {si_signo=%s, si_code=%d, si_pid=%d, si_uid=%d} ---\n+++ killed by SIGSEGV +++\e[0m\n",
 						sig_def[sig.si_signo], sig_def[sig.si_signo], sig.si_code, sig.si_pid, sig.si_uid);
 					//signal(SIGSEGV, signal_sigsegv);
 					tgkill(getpid(), gettid(), signal_type);
@@ -214,7 +182,9 @@ static int	ft_strace_without_opt(char **av, char **env)
 			ptrace(PTRACE_GETREGS, child, 0, &regs);
 			syscall_param(child, regs, av);
 			ptrace(PTRACE_SYSCALL, child, 0, 0);
-			waitpid(child, &status, WUNTRACED);
+			sigprocmask(SIG_SETMASK, &empty, NULL);
+			waitpid(child, &status, 0);
+			sigprocmask(SIG_BLOCK, &masque, NULL);
 			ptrace(PTRACE_GETREGS, child, 0, &regs);
 			syscall_return(regs);
 			if (WIFEXITED(status))

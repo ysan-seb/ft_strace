@@ -54,5 +54,10 @@ int		padding(void);
 
 int   		access_def(long param);
 int    		mprotect_def(long param);
-int		open_def(long param);
+int			open_def(long param);
+int			mmap_def_map(long param);
+int     	mmap_def_prot(long param);
+int			arch_prctl_def(long param);
+
+int	syscall_param(pid_t child, struct user_regs_struct regs, char **av);
 #endif

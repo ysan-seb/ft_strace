@@ -14,6 +14,10 @@ SRCS =	$(SRC_PATH)main.c \
 		$(SRC_PATH)access_def.c \
 		$(SRC_PATH)mprotect_def.c \
 		$(SRC_PATH)open_def.c \
+		$(SRC_PATH)mmap_def_map.c \
+		$(SRC_PATH)mmap_def_prot.c \
+		$(SRC_PATH)arch_prctl_def.c \
+		$(SRC_PATH)syscall_param.c \
 
 
 OBJS = $(SRCS:.c=.o)
