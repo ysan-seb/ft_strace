@@ -1,5 +1,5 @@
 #ifndef ERRNO_DEF_H
-#define ERRNO_DEF_H
+# define ERRNO_DEF_H
 
 const char *errno_def[] = {
     [  1] = "EPERM",

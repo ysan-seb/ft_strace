@@ -1,7 +1,6 @@
 #include "ft_strace.h"
 #include "systable.h"
 #include "errno_def.h"
-#include "signal_def.h"
 
 int     param_type_str(pid_t child, long param)
 {
@@ -104,7 +103,7 @@ int	syscall_param(pid_t child, struct user_regs_struct regs, char **av)
 	return (0);
 }
 
-static int	syscall_return(struct user_regs_struct regs)
+int	syscall_return(struct user_regs_struct regs)
 {
 	char	tmp[256];
 	char	err[256];
@@ -128,76 +127,6 @@ static int	syscall_return(struct user_regs_struct regs)
 	}
 	printf("%s\n", buffer.buff);
 	buffer_flush();
-	return (0);
-}
-
-
-static int	ft_strace_without_opt(char **av, char **env)
-{
-	int						status;
-	pid_t					child;
-	struct user_regs_struct	regs;
-	int		signal_type;
-	siginfo_t	sig;
-	sigset_t masque;
-	sigset_t empty;
-
-	sigemptyset(&masque);
-	sigemptyset(&empty);
-	sigaddset(&masque, SIGHUP);
-	sigaddset(&masque, SIGINT);
-	sigaddset(&masque, SIGQUIT);
-	sigaddset(&masque, SIGPIPE);
-	sigaddset(&masque, SIGTERM);
-	child = fork();
-	if (child == 0) {
-		execve(av[0], av, env);
-	}
-	else {
-		ptrace(PTRACE_SEIZE, child, 0, 0);
-		ptrace(PTRACE_INTERRUPT, child, 0, 0);
-		ptrace(PTRACE_SETOPTIONS, child, 0, PTRACE_O_TRACESYSGOOD);
-		wait(&status);
-		while(1) {
-			ptrace(PTRACE_SYSCALL, child, 0, 0);
-			sigprocmask(SIG_SETMASK, &empty, NULL);
-			waitpid(child, &status, 0);
-			sigprocmask(SIG_BLOCK, &masque, NULL);
-			if (WIFSTOPPED(status) && (signal_type = WSTOPSIG(status)) != SIGTRAP) {
-				ptrace(PTRACE_GETSIGINFO, child, 0, &sig);
-				if (signal_type == SIGCHLD) {
-					printf("\e[3;38;5;9m--- %s {si_signo=%s, si_code=%d, si_pid=%d, si_uid=%d, si_status=%d, si_utime=%ld, si_stime=%ld} ---\e[0m\n",
-							sig_def[sig.si_signo], sig_def[sig.si_signo], sig.si_code, sig.si_pid, sig.si_uid, sig.si_status, sig.si_utime, sig.si_stime);
-					ptrace(PTRACE_SYSCALL, child, 0, SIGCHLD);
-					sigprocmask(SIG_SETMASK, &empty, NULL);
-					waitpid(child, &status, 0);
-					sigprocmask(SIG_BLOCK, &masque, NULL);
-				} else if (signal_type == SIGSEGV) {
-					printf("\e[3;38;5;9m--- %s {si_signo=%s, si_code=%d, si_pid=%d, si_uid=%d} ---\n+++ killed by SIGSEGV +++\e[0m\n",
-							sig_def[sig.si_signo], sig_def[sig.si_signo], sig.si_code, sig.si_pid, sig.si_uid);
-					tgkill(getpid(), gettid(), signal_type);
-				} else if (signal_type == SIGWINCH) {
-					printf("\e[3;38;5;9m--- %s {si_signo=%s, si_code=%d, si_pid=%d, si_uid=%d} ---\e[0m\n",
-							sig_def[sig.si_signo], sig_def[sig.si_signo], sig.si_code, sig.si_pid, sig.si_uid);
-					ptrace(PTRACE_SYSCALL, child, 0, SIGWINCH);
-					sigprocmask(SIG_SETMASK, &empty, NULL);
-					waitpid(child, &status, 0);
-					sigprocmask(SIG_BLOCK, &masque, NULL);
-				}
-			}
-			ptrace(PTRACE_GETREGS, child, 0, &regs);
-			syscall_param(child, regs, av);
-			ptrace(PTRACE_SYSCALL, child, 0, 0);
-			sigprocmask(SIG_SETMASK, &empty, NULL);
-			waitpid(child, &status, 0);
-			sigprocmask(SIG_BLOCK, &masque, NULL);
-			ptrace(PTRACE_GETREGS, child, 0, &regs);
-			syscall_return(regs);
-			if (WIFEXITED(status))
-				break;
-		}
-		printf("+++ exited with %d +++\n", 0);
-	}
 	return (0);
 }
 

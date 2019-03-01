@@ -1,5 +1,5 @@
-#ifndef STRACE_H
-# define STRACE_H
+#ifndef FT_STRACE_H
+# define FT_STRACE_H
 
 #include <errno.h>
 #include <stdio.h>
@@ -52,12 +52,15 @@ void		buffer_flush(void);
 
 int		padding(void);
 
-int   		access_def(long param);
+int   		access_def(long param);	
 int    		mprotect_def(long param);
 int			open_def(long param);
 int			mmap_def_map(long param);
 int     	mmap_def_prot(long param);
 int			arch_prctl_def(long param);
 
+int	syscall_return(struct user_regs_struct regs);
 int	syscall_param(pid_t child, struct user_regs_struct regs, char **av);
+
+int			ft_strace_without_opt(char **av, char **env);
 #endif

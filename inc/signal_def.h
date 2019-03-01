@@ -1,5 +1,5 @@
 #ifndef SIGNAL_DEF_H
-#define SIGNAL_DEF_H
+# define SIGNAL_DEF_H
 
 const char *sig_def[] = {
     [ 1] = "SIGHUP",

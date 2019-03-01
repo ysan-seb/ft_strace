@@ -18,6 +18,7 @@ SRCS =	$(SRC_PATH)main.c \
 		$(SRC_PATH)mmap_def_prot.c \
 		$(SRC_PATH)arch_prctl_def.c \
 		$(SRC_PATH)syscall_param.c \
+		$(SRC_PATH)strace_without_opt.c \
 
 
 OBJS = $(SRCS:.c=.o)
