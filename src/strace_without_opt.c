@@ -13,7 +13,7 @@ static int	signal_behaviors(pid_t child, int status, sigset_t empty, sigset_t ma
 				sig_def[sig.si_signo], sig_def[sig.si_signo], sig.si_code, sig.si_pid, sig.si_uid, sig.si_status, sig.si_utime, sig.si_stime);
 			ptrace(PTRACE_SYSCALL, child, 0, sig.si_signo);
 			sigprocmask(SIG_SETMASK, &empty, NULL);
-			waitpid(child, &status, 0);
+			waitpid(child, &status, WUNTRACED);
 			sigprocmask(SIG_BLOCK, &mask, NULL);
 		} else if (sig_type == SIGSEGV) {
 			printf("\e[3;38;5;9m--- %s {si_signo=%s, si_code=%d, si_pid=%d, si_uid=%d} ---\n+++ killed by SIGSEGV +++\e[0m\n",
@@ -74,16 +74,14 @@ int	ft_strace_without_opt(char **av, char **env)
 		while(1) {
 			ptrace(PTRACE_SYSCALL, child, 0, 0);
 			sigprocmask(SIG_SETMASK, &empty, NULL);
-			waitpid(child, &status, 0);
+			waitpid(child, &status, WUNTRACED);
 			sigprocmask(SIG_BLOCK, &mask, NULL);
 			signal_behaviors(child, status, empty, mask);
 			ptrace(PTRACE_GETREGS, child, 0, &regs);
 			syscall_param(child, regs, av);
-			if (WIFEXITED(status))
-				break;
 			ptrace(PTRACE_SYSCALL, child, 0, 0);
 			sigprocmask(SIG_SETMASK, &empty, NULL);
-			waitpid(child, &status, 0);
+			waitpid(child, &status, WUNTRACED);
 			sigprocmask(SIG_BLOCK, &mask, NULL);
 			signal_behaviors(child, status, empty, mask);
 			ptrace(PTRACE_GETREGS, child, 0, &regs);
@@ -91,6 +89,7 @@ int	ft_strace_without_opt(char **av, char **env)
 			if (WIFEXITED(status))
 				break;
 		}
+		ptrace(PTRACE_DETACH, child, 0, 0);
 		printf("+++ exited with %d +++\n", 0);
 	}
 	return (0);
