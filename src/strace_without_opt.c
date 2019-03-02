@@ -21,21 +21,21 @@ static int	signal_behaviors(pid_t child, int status, sigset_t empty, sigset_t ma
 			tgkill(getpid(), gettid(), sig_type);
 			ptrace(PTRACE_SYSCALL, child, 0, sig.si_signo);
 			sigprocmask(SIG_SETMASK, &empty, NULL);
-			waitpid(child, &status, 0);
+			waitpid(child, &status, WUNTRACED);
 			sigprocmask(SIG_BLOCK, &mask, NULL);
 		} else if (sig_type == SIGWINCH) {
 			printf("\e[3;38;5;9m--- %s {si_signo=%s, si_code=%d, si_pid=%d, si_uid=%d} ---\e[0m\n",
 					sig_def[sig.si_signo], sig_def[sig.si_signo], sig.si_code, sig.si_pid, sig.si_uid);
 			ptrace(PTRACE_SYSCALL, child, 0, sig.si_signo);
 			sigprocmask(SIG_SETMASK, &empty, NULL);
-			waitpid(child, &status, 0);
+			waitpid(child, &status, WUNTRACED);
 			sigprocmask(SIG_BLOCK, &mask, NULL);
 		} else if (sig_type == SIGCONT) {
 			printf("\e[3;38;5;9m--- %s {si_signo=%s, si_code=%d, si_pid=%d, si_uid=%d} ---\e[0m\n",
 					sig_def[sig.si_signo], sig_def[sig.si_signo], sig.si_code, sig.si_pid, sig.si_uid);
 			ptrace(PTRACE_SYSCALL, child, 0, sig.si_signo);
 			sigprocmask(SIG_SETMASK, &empty, NULL);
-			waitpid(child, &status, 0);
+			waitpid(child, &status, WUNTRACED);
 			sigprocmask(SIG_BLOCK, &mask, NULL);
 		}
 	}
