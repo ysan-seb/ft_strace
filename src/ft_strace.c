@@ -61,7 +61,7 @@ int     param_type(pid_t child, struct user_regs_struct regs, char tmp[64], char
 {
 	extern char **environ;
 	long	param[6] = {regs.rdi, regs.rsi, regs.rdx, regs.r10, regs.r8, regs.r9};
-
+	
 	if ((void*)param[i] == av) {
 		sprintf(tmp, "[\"%s\"]", av[0]);
 	} else if ((void*)param[i] == environ) {
@@ -130,12 +130,35 @@ int	syscall_return(struct user_regs_struct regs)
 	return (0);
 }
 
-int     ft_strace(char **av, t_opt opt, char **env)
+#include <elf.h>
+
+int		filearch(char *file)
+{
+	Elf32_Ehdr header;
+
+	FILE* f = fopen(file, "r");
+  	if(f) {
+    	fread(&header, 1, sizeof(header), f);
+		if (header.e_type == ELFMAG0 && header.e_ident[EI_MAG1] == ELFMAG1 && header.e_ident[EI_MAG2] == ELFMAG2 && header.e_ident[EI_MAG3] == ELFMAG3 ) {
+			if (header.e_ident[EI_CLASS] == ELFCLASS32)
+				arch = 32;
+			else if (header.e_ident[EI_CLASS] == ELFCLASS64)
+				arch = 64;
+			else {
+				fclose(f);
+				return (-1);
+			}
+		}
+	} else
+		return (-1);
+	return (0);		
+}
+
+int     ft_strace(char **av, char **env)
 {
 	t_path		cmd_path;
 	struct stat filestat;
 
-	(void)opt;
 	cmd_path = get_command_path(av[0]);
 	av[0] = cmd_path.str;
 	if (stat(av[0], &filestat) < 0) {
@@ -144,6 +167,8 @@ int     ft_strace(char **av, t_opt opt, char **env)
 		perror("'");
 		return (1);
 	}
+	if (filearch(av[0]) == -1)
+		exit (-1);
 	ft_strace_without_opt(av, env);
 	return (0);
 }

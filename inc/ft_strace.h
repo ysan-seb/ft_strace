@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <sys/ptrace.h>
 #include <sys/reg.h>
 #include <sys/stat.h>
@@ -21,11 +22,7 @@
 #define gettid() syscall(SYS_gettid)
 #define tgkill(pid, tid, sig) syscall(SYS_tgkill, pid, tid, sig)
 
-typedef struct 	s_opt
-{
-	int 	c;
-	int 	h;
-}		t_opt;
+int				arch;
 
 typedef struct 	s_path
 {
@@ -40,17 +37,16 @@ typedef struct 	s_buffer
 
 t_buffer	buffer;
 
-char            **parse_options(char **av, t_opt *opt);
-int		ft_strace(char **av, t_opt opt, char **env);
+int			ft_strace(char **av, char **env);
 t_path		get_command_path(char *cmd);
 
-int		get_env_size(char **env);
+int			get_env_size(char **env);
 
-int		buffer_add_char(char c);
-int		buffer_add_string(char *str);
+int			buffer_add_char(char c);
+int			buffer_add_string(char *str);
 void		buffer_flush(void);
 
-int		padding(void);
+int			padding(void);
 
 int   		access_def(long param);	
 int    		mprotect_def(long param);
@@ -59,8 +55,8 @@ int			mmap_def_map(long param);
 int     	mmap_def_prot(long param);
 int			arch_prctl_def(long param);
 
-int	syscall_return(struct user_regs_struct regs);
-int	syscall_param(pid_t child, struct user_regs_struct regs, char **av);
+int			syscall_return(struct user_regs_struct regs);
+int			syscall_param(pid_t child, struct user_regs_struct regs, char **av);
 
 int			ft_strace_without_opt(char **av, char **env);
 #endif

@@ -30,14 +30,7 @@ static int	signal_behaviors(pid_t child, int status, sigset_t empty, sigset_t ma
 			printf("\e[3;38;5;9m--- %s {si_signo=%s, si_code=%d, si_pid=%d, si_uid=%d} ---\e[0m\n",
 					sig_def[sig.si_signo], sig_def[sig.si_signo], sig.si_code, sig.si_pid, sig.si_uid);
 			break;
-		//	ptrace(PTRACE_SYSCALL, child, 0, sig.si_signo);
-		//	sigprocmask(SIG_SETMASK, &empty, NULL);
-		//	waitpid(child, &status, WUNTRACED);
-		//	sigprocmask(SIG_BLOCK, &mask, NULL);
 		} else {
-
-			printf("\e[3;38;5;9m--- %s {si_signo=%s, si_code=%d, si_pid=%d, si_uid=%d} ---\e[0m\n",
-					sig_def[sig.si_signo], sig_def[sig.si_signo], sig.si_code, sig.si_pid, sig.si_uid);
 			break;
 		}
 	}
@@ -57,16 +50,18 @@ static void	sigprocmask_init(sigset_t *mask, sigset_t *empty)
 
 int	ft_strace_without_opt(char **av, char **env)
 {
+	int						ret;
 	int						status;
 	pid_t					child;
 	struct user_regs_struct	regs;
 	sigset_t 				mask;
 	sigset_t 				empty;
 
+	ret = 0;
 	sigprocmask_init(&mask, &empty);
 	child = fork();
 	if (child == 0) {
-		execve(av[0], av, env);
+		ret = execve(av[0], av, env);
 	}
 	else {
 		ptrace(PTRACE_SEIZE, child, 0, 0);
@@ -91,7 +86,8 @@ int	ft_strace_without_opt(char **av, char **env)
 			if (WIFEXITED(status))
 				break;
 		}
-		printf("+++ exited with %d +++\n", 0);
+		ret = WEXITSTATUS(status); 
+		printf("+++ exited with %d +++\n", ret);
 	}
 	return (0);
 }

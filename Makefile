@@ -3,21 +3,12 @@ NAME = ft_strace
 SRC_PATH = ./src/
 
 SRCS =	$(SRC_PATH)main.c \
-		$(SRC_PATH)parse_options.c \
 		$(SRC_PATH)ft_strace.c \
 		$(SRC_PATH)get_command_path.c \
-		$(SRC_PATH)buffer_add_char.c \
-		$(SRC_PATH)buffer_add_string.c \
-		$(SRC_PATH)buffer_flush.c \
+		$(SRC_PATH)buffer.c \
 		$(SRC_PATH)get_env_size.c \
 		$(SRC_PATH)padding.c \
-		$(SRC_PATH)access_def.c \
-		$(SRC_PATH)mprotect_def.c \
-		$(SRC_PATH)open_def.c \
-		$(SRC_PATH)mmap_def_map.c \
-		$(SRC_PATH)mmap_def_prot.c \
-		$(SRC_PATH)arch_prctl_def.c \
-		$(SRC_PATH)syscall_param.c \
+		$(SRC_PATH)buff_define.c \
 		$(SRC_PATH)strace_without_opt.c \
 
 
@@ -25,7 +16,7 @@ OBJS = $(SRCS:.c=.o)
 
 CC = gcc
 
-FLAGS = -Wall -Werror -Wextra -g
+FLAGS = -Wall -Werror -Wextra
 
 HEADER = -I./inc
 
