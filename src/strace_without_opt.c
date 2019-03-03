@@ -19,10 +19,6 @@ static int	signal_behaviors(pid_t child, int status, sigset_t empty, sigset_t ma
 			printf("\e[3;38;5;9m--- %s {si_signo=%s, si_code=%d, si_pid=%d, si_uid=%d} ---\n+++ killed by SIGSEGV +++\e[0m\n",
 					sig_def[sig.si_signo], sig_def[sig.si_signo], sig.si_code, sig.si_pid, sig.si_uid);
 			tgkill(getpid(), gettid(), sig_type);
-			ptrace(PTRACE_SYSCALL, child, 0, sig.si_signo);
-			sigprocmask(SIG_SETMASK, &empty, NULL);
-			waitpid(child, &status, WUNTRACED);
-			sigprocmask(SIG_BLOCK, &mask, NULL);
 		} else if (sig_type == SIGWINCH) {
 			printf("\e[3;38;5;9m--- %s {si_signo=%s, si_code=%d, si_pid=%d, si_uid=%d} ---\e[0m\n",
 					sig_def[sig.si_signo], sig_def[sig.si_signo], sig.si_code, sig.si_pid, sig.si_uid);
@@ -33,10 +29,16 @@ static int	signal_behaviors(pid_t child, int status, sigset_t empty, sigset_t ma
 		} else if (sig_type == SIGCONT) {
 			printf("\e[3;38;5;9m--- %s {si_signo=%s, si_code=%d, si_pid=%d, si_uid=%d} ---\e[0m\n",
 					sig_def[sig.si_signo], sig_def[sig.si_signo], sig.si_code, sig.si_pid, sig.si_uid);
-			ptrace(PTRACE_SYSCALL, child, 0, sig.si_signo);
-			sigprocmask(SIG_SETMASK, &empty, NULL);
-			waitpid(child, &status, WUNTRACED);
-			sigprocmask(SIG_BLOCK, &mask, NULL);
+			break;
+		//	ptrace(PTRACE_SYSCALL, child, 0, sig.si_signo);
+		//	sigprocmask(SIG_SETMASK, &empty, NULL);
+		//	waitpid(child, &status, WUNTRACED);
+		//	sigprocmask(SIG_BLOCK, &mask, NULL);
+		} else {
+
+			printf("\e[3;38;5;9m--- %s {si_signo=%s, si_code=%d, si_pid=%d, si_uid=%d} ---\e[0m\n",
+					sig_def[sig.si_signo], sig_def[sig.si_signo], sig.si_code, sig.si_pid, sig.si_uid);
+			break;
 		}
 	}
 	return (0);
@@ -89,7 +91,6 @@ int	ft_strace_without_opt(char **av, char **env)
 			if (WIFEXITED(status))
 				break;
 		}
-		ptrace(PTRACE_DETACH, child, 0, 0);
 		printf("+++ exited with %d +++\n", 0);
 	}
 	return (0);
