@@ -22,8 +22,6 @@
 #define gettid() syscall(SYS_gettid)
 #define tgkill(pid, tid, sig) syscall(SYS_tgkill, pid, tid, sig)
 
-int				arch;
-
 typedef struct 	s_path
 {
 	char	str[PATH_MAX];
@@ -37,26 +35,21 @@ typedef struct 	s_buffer
 
 t_buffer	buffer;
 
-int			ft_strace(char **av, char **env);
+int		ft_strace(char **av, char **env);
 t_path		get_command_path(char *cmd);
-
-int			get_env_size(char **env);
-
-int			buffer_add_char(char c);
-int			buffer_add_string(char *str);
+int		get_env_size(char **env);
+int		buffer_add_char(char c);
+int		buffer_add_string(char *str);
 void		buffer_flush(void);
-
-int			padding(void);
-
+int		padding(void);
 int   		access_def(long param);	
 int    		mprotect_def(long param);
-int			open_def(long param);
-int			mmap_def_map(long param);
+int		open_def(long param);
+int		mmap_def_map(long param);
 int     	mmap_def_prot(long param);
-int			arch_prctl_def(long param);
+int		arch_prctl_def(long param);
+int		syscall_return(struct user_regs_struct regs);
+int		syscall_param(pid_t child, struct user_regs_struct regs, char **av);
+int		ft_strace_without_opt(char **av, char **env);
 
-int			syscall_return(struct user_regs_struct regs);
-int			syscall_param(pid_t child, struct user_regs_struct regs, char **av);
-
-int			ft_strace_without_opt(char **av, char **env);
 #endif

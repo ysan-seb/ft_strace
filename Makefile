@@ -3,14 +3,10 @@ NAME = ft_strace
 SRC_PATH = ./src/
 
 SRCS =	$(SRC_PATH)main.c \
-		$(SRC_PATH)ft_strace.c \
-		$(SRC_PATH)get_command_path.c \
-		$(SRC_PATH)buffer.c \
-		$(SRC_PATH)get_env_size.c \
-		$(SRC_PATH)padding.c \
-		$(SRC_PATH)buff_define.c \
-		$(SRC_PATH)strace_without_opt.c \
-
+	$(SRC_PATH)ft_strace.c \
+	$(SRC_PATH)buffer.c \
+	$(SRC_PATH)buff_define.c \
+	$(SRC_PATH)strace_without_opt.c \
 
 OBJS = $(SRCS:.c=.o)
 
@@ -27,7 +23,7 @@ all	: $(NAME)
 $(NAME):$(OBJS)
 	$(CC) $(FLAGS) -o $(NAME) $(OBJS) $(HEADER)
 
-%.o: %.c ./inc/ft_strace.h
+%.o: %.c ./inc/ft_strace.h ./inc/systable.h ./inc/signal_def.h ./inc/errno_def.h
 	gcc $(FLAGS) -o $@ -c  $< $(HEADER)
 
 clean	:

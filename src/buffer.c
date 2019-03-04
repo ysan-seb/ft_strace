@@ -1,11 +1,11 @@
 #include "ft_strace.h"
 
-void			buffer_flush(void)
+void	buffer_flush(void)
 {
 	memset(&buffer, 0, sizeof(buffer));
 }
 
-int			buffer_add_string(char *str)
+int	buffer_add_string(char *str)
 {
 	int size;
 
@@ -18,7 +18,7 @@ int			buffer_add_string(char *str)
 	return (1);
 }
 
-int			buffer_add_char(char c)
+int	buffer_add_char(char c)
 {
 	if (buffer.i < 255)
 		buffer.buff[buffer.i++] = c;
